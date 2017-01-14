@@ -104,7 +104,7 @@ class Embedding(Function):
             go = grad_output.view(-1, grad_output.size()[-1])
             grad_weight = torch.smm(sp, go)
         # TODO
-        return None, Variable(grad_weight)
+        return None, Variable(grad_weight, requires_grad=True)
 
 
 _all_functions.append(Embedding)

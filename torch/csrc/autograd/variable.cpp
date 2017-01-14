@@ -145,6 +145,28 @@ PyObject* THPVariable_blasDispatchFunctional(PyObject *_unused, PyObject *args)
   PyObject *inplace = PyTuple_GET_ITEM(args, 2);
   auto num_fn_args = PyTuple_GET_SIZE(fn_args);
 
+  bool is_volatile = false;
+  THPObjectPtr unpacked_args = PyTuple_New(num_fn_args);
+  for (int i = 0; i < num_fn_args; i++) {
+    PyObject *arg = PyTuple_GET_ITEM(fn_args, i);
+    if (THPVariable_Check(arg)) {
+      THPVariable *var_arg = (THPVariable*)arg;
+      is_volatile = is_volatile || var_arg->is_volatile;
+      arg = var_arg->data;
+    }
+    Py_INCREF(arg);
+    PyTuple_SET_ITEM(unpacked_args.get(), i, arg);
+  }
+  if (is_volatile) {
+    THPObjectPtr fast = PyObject_GetAttrString(fn_cls, "fast_track");
+    if (!fast) return NULL;
+    if (fast) {
+      THPObjectPtr result = PyObject_CallObject(fast, unpacked_args);
+      if (!result) return NULL;
+      return THPVariable_NewVolatile(result);
+    }
+  }
+
   if (num_fn_args == 5) {
     alpha = PyTuple_GET_ITEM(fn_args, 0);
     beta = PyTuple_GET_ITEM(fn_args, 2);

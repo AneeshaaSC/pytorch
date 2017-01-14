@@ -774,7 +774,7 @@ PyObject *THPFunction_saved_tensors(THPFunction *self, void *_unused)
     }
     // TODO
     if (tensor != Py_None) {
-        tensor = THPVariable_New(tensor, NULL, 0);
+        tensor = THPVariable_NewVolatile(tensor);
     } else {
         Py_INCREF(tensor);
     }

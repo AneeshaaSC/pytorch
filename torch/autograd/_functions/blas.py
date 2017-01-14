@@ -10,6 +10,7 @@ class _BlasBase(torch._C._BlasFunctionBase, Function):
 
 
 class Addmm(_BlasBase):
+    fast_track = torch.addmm
 
     def forward(self, add_matrix, matrix1, matrix2):
         self.save_for_backward(matrix1, matrix2)
@@ -40,6 +41,7 @@ class Addmm(_BlasBase):
 
 
 class Addbmm(_BlasBase):
+    fast_track = torch.addbmm
 
     def forward(self, add_matrix, batch1, batch2):
         self.save_for_backward(batch1, batch2)
@@ -75,6 +77,7 @@ class Addbmm(_BlasBase):
 
 
 class Baddbmm(_BlasBase):
+    fast_track = torch.baddbmm
 
     def forward(self, add_batch, batch1, batch2):
         self.save_for_backward(batch1, batch2)
@@ -105,6 +108,7 @@ class Baddbmm(_BlasBase):
 
 
 class Addmv(_BlasBase):
+    fast_track = torch.addmv
 
     def forward(self, add_vector, matrix, vector):
         self.save_for_backward(matrix, vector)
@@ -135,6 +139,7 @@ class Addmv(_BlasBase):
 
 
 class Addr(_BlasBase):
+    fast_track = torch.addr
 
     def forward(self, add_matrix, vector1, vector2):
         self.save_for_backward(vector1, vector2)

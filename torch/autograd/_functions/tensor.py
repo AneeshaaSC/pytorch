@@ -21,7 +21,7 @@ class Index(torch._C._IndexFunctionBase, Function):
         grad_input.index(self.index).copy_(grad_output.data)
         # TODO
         from ..variable import Variable
-        return Variable(grad_input)
+        return Variable(grad_input, volatile=True)
 
 
 class SetItem(InplaceFunction):
@@ -510,7 +510,7 @@ class Chunk(torch._C._ChunkFunctionBase, Function):
             grad_input.narrow(self.dim, offset, grad_size).copy_(grad.data)
             offset += grad_size
         # TODO
-        return Variable(grad_input)
+        return Variable(grad_input, volatile=True)
 
 
 class Gather(Function):
