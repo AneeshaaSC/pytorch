@@ -132,6 +132,74 @@ int THPVariable_init(THPVariable *self, PyObject *args, PyObject *kwargs)
   return 0;
 }
 
+PyObject* THPVariable_blasDispatchFunctional(PyObject *_unused, PyObject *args)
+{
+  static PyObject *one = PyInt_FromLong(1);
+  THPUtils_assert(PyTuple_GET_SIZE(args) == 3, "invalid arg number");
+  PyObject *alpha = one;
+  PyObject *beta = one;
+  THPObjectPtr variables;
+
+  PyObject *fn_cls = PyTuple_GET_ITEM(args, 0);
+  PyObject *fn_args = PyTuple_GET_ITEM(args, 1);
+  PyObject *inplace = PyTuple_GET_ITEM(args, 2);
+  auto num_fn_args = PyTuple_GET_SIZE(fn_args);
+
+  if (num_fn_args == 5) {
+    alpha = PyTuple_GET_ITEM(fn_args, 0);
+    beta = PyTuple_GET_ITEM(fn_args, 2);
+    auto num_variables = num_fn_args - 2;
+    // This is exactly fn_args[1:2] + fn_args[3:]
+    variables = PyTuple_New(num_variables);
+    if (!variables) return NULL;
+    PyTuple_SET_ITEM(variables.get(), 0, PyTuple_GET_ITEM(fn_args, 1));
+    for (int i = 3; i < num_fn_args; i++)
+      PyTuple_SET_ITEM(variables.get(), i - 2, PyTuple_GET_ITEM(fn_args, i));
+    for (int i = 0; i < num_variables; i++)
+      Py_INCREF(PyTuple_GET_ITEM(variables.get(), i));
+  } else if (num_fn_args == 4) {
+    alpha = PyTuple_GET_ITEM(fn_args, 0);
+    variables = PyTuple_GetSlice(fn_args, 1, num_fn_args);
+  } else {
+    Py_INCREF(fn_args);
+    variables = fn_args;
+  }
+
+  THPObjectPtr fn = PyObject_CallFunctionObjArgs(fn_cls, alpha, beta, inplace, NULL);
+  if (!fn) return NULL;
+  return PyObject_CallObject(fn, variables);
+}
+
+PyObject* THPVariable_blasDispatch(THPVariable *self, PyObject *args)
+{
+  static PyObject *one = PyInt_FromLong(1);
+  THPUtils_assert(PyTuple_GET_SIZE(args) == 3, "invalid arg number");
+  PyObject *alpha = one;
+  PyObject *beta = one;
+  THPObjectPtr variables;
+
+  PyObject *fn_cls = PyTuple_GET_ITEM(args, 0);
+  PyObject *fn_args = PyTuple_GET_ITEM(args, 1);
+  PyObject *inplace = PyTuple_GET_ITEM(args, 2);
+  auto num_fn_args = PyTuple_GET_SIZE(fn_args);
+
+  if (num_fn_args >= 5) alpha = PyTuple_GET_ITEM(fn_args, 0);
+  if (num_fn_args >= 4) beta = PyTuple_GET_ITEM(fn_args, num_fn_args - 4);
+  variables = PyTuple_New(4);
+  if (!variables) return NULL;
+  Py_INCREF(self);
+  PyTuple_SET_ITEM(variables.get(), 0, (PyObject*)self);
+  for (int i = num_fn_args - 3; i < num_fn_args; i++) {
+    PyObject *arg = PyTuple_GET_ITEM(fn_args, i);
+    Py_INCREF(arg);
+    PyTuple_SET_ITEM(variables.get(), i - 1, arg);
+  }
+
+  THPObjectPtr fn = PyObject_CallFunctionObjArgs(fn_cls, alpha, beta, inplace, NULL);
+  if (!fn) return NULL;
+  return PyObject_CallObject(fn, variables);
+}
+
 PyObject * THPVariable_getstate(THPVariable *self)
 {
   THPUtils_assert(!self->creator, "serialization of non-leaf variables is not "
@@ -220,6 +288,8 @@ static struct PyMemberDef THPVariable_members[] = {
 static struct PyMethodDef THPVariable_methods[] = {
   {"__getstate__", (PyCFunction)THPVariable_getstate, METH_NOARGS, NULL},
   {"__setstate__", (PyCFunction)THPVariable_setstate, METH_O, NULL},
+  {"_blas_dispatch_func", (PyCFunction)THPVariable_blasDispatchFunctional, METH_VARARGS | METH_STATIC, NULL},
+  {"_blas_dispatch", (PyCFunction)THPVariable_blasDispatch, METH_VARARGS, NULL},
   {NULL}
 };
 

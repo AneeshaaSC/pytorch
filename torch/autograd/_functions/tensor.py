@@ -5,11 +5,9 @@ from torch._utils import _accumulate
 from ..function import Function, InplaceFunction
 
 
-class Index(Function):
+class Index(torch._C._IndexFunctionBase, Function):
 
-    def __init__(self, index):
-        super(Index, self).__init__()
-        self.index = index
+    # __init__(self, index)
 
     def forward(self, i):
         self.input_size = i.size()
@@ -71,12 +69,9 @@ class NoGrad(Function):
     __call__ = _do_forward
 
 
-class Transpose(Function):
+class Transpose(torch._C._TransposeFunctionBase, Function):
 
-    def __init__(self, *dims):
-        super(Transpose, self).__init__()
-        assert len(dims) == 2
-        self.dims = dims
+    # __init__(self, dim1, dim2)
 
     def forward(self, i):
         result = i.transpose(*self.dims)
@@ -87,11 +82,9 @@ class Transpose(Function):
         return grad_output.transpose(*self.dims)
 
 
-class View(Function):
+class View(torch._C._ViewFunctionBase, Function):
 
-    def __init__(self, *sizes):
-        super(View, self).__init__()
-        self.sizes = sizes
+    # __init__(self, *sizes)
 
     def forward(self, i):
         self.input_size = i.size()
@@ -295,11 +288,9 @@ class IndexSelect(Function):
         return grad_tensor, None
 
 
-class Concat(Function):
+class Concat(torch._C._ConcatFunctionBase, Function):
 
-    def __init__(self, dim):
-        super(Concat, self).__init__()
-        self.dim = dim
+    # __init__(self, dim)
 
     def forward(self, *inputs):
         self.input_sizes = [i.size(self.dim) for i in inputs]
@@ -500,12 +491,9 @@ class Topk(_MultiSelectionFunction):
         return super(Topk, self).forward(input)
 
 
-class Chunk(Function):
+class Chunk(torch._C._ChunkFunctionBase, Function):
 
-    def __init__(self, num_chunks, dim=0):
-        super(Chunk, self).__init__()
-        self.num_chunks = num_chunks
-        self.dim = dim
+    # __init__(self, num_chunks, dim=0)
 
     def forward(self, i):
         self.input_size = i.size()

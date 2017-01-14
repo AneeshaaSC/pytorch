@@ -49,6 +49,16 @@ PyTypeObject THP##FN_NAME##Type = {                                            \
   0                                      /* tp_new */                          \
 };
 
+static bool _set_inplace(THPFunction *self, PyObject *inplace_arg)
+{
+  if (!PyBool_Check(inplace_arg)) {
+    PyErr_Format(PyExc_TypeError, "inplace argument is expected to be a bool, "
+        "but got %s", THPUtils_typename(inplace_arg));
+    return false;
+  }
+  self->inplace = inplace_arg == Py_True;
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // InplaceFunction
@@ -99,27 +109,136 @@ MAKE_TYPE_OBJECT(InplaceFunction, Function, THPInplaceFunction_members, NULL,
     THPInplaceFunction_init);
 
 ////////////////////////////////////////////////////////////////////////////////
+// SubConstant
+////////////////////////////////////////////////////////////////////////////////
+
+static int THPSubConstantFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
+{
+  static const char *arg_names[] = {"constant", "sub_tensor", "inplace", NULL};
+  PyObject *constant;
+  PyObject *sub_tensor = Py_False;
+  PyObject *inplace = Py_False;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OOO", (char**)arg_names,
+                                   &constant, &sub_tensor, &inplace))
+    return -1;
+
+  if (!_set_inplace(self, inplace)) return -1;
+
+  if (PyObject_SetAttrString((PyObject*)self, "constant", constant) == -1) return -1;
+  if (PyObject_SetAttrString((PyObject*)self, "sub_tensor", sub_tensor) == -1) return -1;
+
+  return 0;
+}
+
+MAKE_TYPE_OBJECT(SubConstantFunction, InplaceFunction, NULL, NULL,
+    THPSubConstantFunction_init);
+
+////////////////////////////////////////////////////////////////////////////////
+// Index
+////////////////////////////////////////////////////////////////////////////////
+
+static int THPIndexFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
+{
+  static const char *arg_names[] = {"index", NULL};
+  PyObject *index;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)arg_names, &index))
+    return -1;
+  if (PyObject_SetAttrString((PyObject*)self, "index", index) == -1) return -1;
+  return 0;
+}
+
+MAKE_TYPE_OBJECT(IndexFunction, Function, NULL, NULL,
+    THPIndexFunction_init);
+
+////////////////////////////////////////////////////////////////////////////////
+// View
+////////////////////////////////////////////////////////////////////////////////
+
+static int THPViewFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
+{
+  if (kwargs && PyDict_Size(kwargs) > 0) {
+    PyErr_SetString(PyExc_TypeError, "View __init__ doesn't accept any keyword arguments");
+    return -1;
+  }
+  if (PyObject_SetAttrString((PyObject*)self, "sizes", args) == -1) return -1;
+  return 0;
+}
+
+MAKE_TYPE_OBJECT(ViewFunction, Function, NULL, NULL,
+    THPViewFunction_init);
+
+////////////////////////////////////////////////////////////////////////////////
+// Concat
+////////////////////////////////////////////////////////////////////////////////
+
+static int THPConcatFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
+{
+  static const char *arg_names[] = {"dim", NULL};
+  PyObject *dim;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O", (char**)arg_names, &dim))
+    return -1;
+  if (PyObject_SetAttrString((PyObject*)self, "dim", dim) == -1) return -1;
+  return 0;
+}
+
+MAKE_TYPE_OBJECT(ConcatFunction, Function, NULL, NULL,
+    THPConcatFunction_init);
+
+////////////////////////////////////////////////////////////////////////////////
+// Transpose
+////////////////////////////////////////////////////////////////////////////////
+
+static int THPTransposeFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
+{
+  if (kwargs && PyDict_Size(kwargs) > 0) {
+    PyErr_SetString(PyExc_TypeError, "View __init__ doesn't accept any keyword arguments");
+    return -1;
+  }
+  if (PyObject_SetAttrString((PyObject*)self, "dims", args) == -1) return -1;
+  return 0;
+}
+
+MAKE_TYPE_OBJECT(TransposeFunction, Function, NULL, NULL,
+    THPTransposeFunction_init);
+
+////////////////////////////////////////////////////////////////////////////////
+// Chunk
+////////////////////////////////////////////////////////////////////////////////
+
+static int THPChunkFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
+{
+  static PyObject *zero = PyInt_FromLong(0);
+  static const char *arg_names[] = {"num_chunks", "dim", NULL};
+  PyObject *num_chunks;
+  PyObject *dim = zero;
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O|O", (char**)arg_names,
+                                   &num_chunks, &dim))
+    return -1;
+  if (PyObject_SetAttrString((PyObject*)self, "num_chunks", num_chunks) == -1) return -1;
+  if (PyObject_SetAttrString((PyObject*)self, "dim", dim) == -1) return -1;
+  return 0;
+}
+
+MAKE_TYPE_OBJECT(ChunkFunction, Function, NULL, NULL,
+    THPChunkFunction_init);
+
+////////////////////////////////////////////////////////////////////////////////
 // BlasBase
 ////////////////////////////////////////////////////////////////////////////////
 
 // WARNING: this *DOES NOT* call the __init__ of superclass
 static int THPBlasFunction_init(THPFunction *self, PyObject *args, PyObject *kwargs)
 {
-  static const char *arg_names[] = {"alpha", "beta", "inplace"};
+  static const char *arg_names[] = {"alpha", "beta", "inplace", NULL};
   static PyObject *one = PyInt_FromLong(1);
   PyObject *alpha = one;
   PyObject *beta = one;
   PyObject *inplace = Py_False;
-  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OOO", (char**)arg_names,
+  if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OOO", (char**)arg_names,
         &alpha, &beta, &inplace))
     return -1;
 
-  if (!PyBool_Check(inplace)) {
-    PyErr_Format(PyExc_TypeError, "inplace argument is expected to be a bool, "
-        "but got %s", THPUtils_typename(inplace));
-    return -1;
-  }
-  self->inplace = inplace == Py_True;
+  if (!_set_inplace(self, inplace)) return -1;
 
   if (PyObject_SetAttrString((PyObject*)self, "alpha", alpha) == -1) return -1;
   if (PyObject_SetAttrString((PyObject*)self, "beta", beta) == -1) return -1;
@@ -171,6 +290,18 @@ bool THPFunctionImpls_initModule(PyObject *module)
   if (!_register_fn(module, &THPInplaceFunctionType, "_InplaceFunctionBase"))
     return false;
   if (!_register_fn(module, &THPBlasFunctionType, "_BlasFunctionBase"))
+    return false;
+  if (!_register_fn(module, &THPSubConstantFunctionType, "_SubConstantFunctionBase"))
+    return false;
+  if (!_register_fn(module, &THPIndexFunctionType, "_IndexFunctionBase"))
+    return false;
+  if (!_register_fn(module, &THPViewFunctionType, "_ViewFunctionBase"))
+    return false;
+  if (!_register_fn(module, &THPConcatFunctionType, "_ConcatFunctionBase"))
+    return false;
+  if (!_register_fn(module, &THPTransposeFunctionType, "_TransposeFunctionBase"))
+    return false;
+  if (!_register_fn(module, &THPChunkFunctionType, "_ChunkFunctionBase"))
     return false;
   return true;
 }

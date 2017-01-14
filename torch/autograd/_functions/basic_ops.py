@@ -78,12 +78,9 @@ class AddConstant(InplaceFunction):
         return grad_output
 
 
-class SubConstant(InplaceFunction):
+class SubConstant(torch._C._SubConstantFunctionBase, InplaceFunction):
 
-    def __init__(self, constant, sub_tensor=False, inplace=False):
-        super(SubConstant, self).__init__(inplace)
-        self.constant = constant
-        self.sub_tensor = sub_tensor
+    # __init__(constant, sub_tensor=False, inplace=False)
 
     def forward(self, a):
         if self.sub_tensor:

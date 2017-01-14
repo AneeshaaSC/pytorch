@@ -482,37 +482,22 @@ class Variable(_C._VariableBase):
     def view_as(self, tensor):
         return View(*tensor.size())(self)
 
-    @staticmethod
-    def _static_blas(cls, args, inplace):
-        num_args = len(args)
-        alpha = beta = 1
-        if num_args > 5:
-            raise RuntimeError("too many args")
-        if num_args == 5:
-            alpha, beta = args[1:3]
-        if num_args == 4:
-            alpha = args[1]
-        return cls(alpha, beta, inplace)(*(args[:1] + args[-2:]))
-
-    def _blas(self, cls, args, inplace):
-        return self._static_blas(cls, (self,) + args, inplace)
-
     def mm(self, matrix):
         output = Variable(self.data.new(self.data.size(0), matrix.data.size(1)))
-        return self._static_blas(Addmm, (output, 0, 1, self, matrix), False)
+        return self._blas_dispatch_func(Addmm, (0, output, 1, self, matrix), False)
 
     def bmm(self, batch):
         output = Variable(self.data.new(self.data.size(0), self.data.size(1),
                 batch.data.size(2)))
-        return self._static_blas(Baddbmm, (output, 0, 1, self, batch), False)
+        return self._blas_dispatch_func(Baddbmm, (0, output, 1, self, batch), False)
 
     def mv(self, vector):
         output = Variable(self.data.new(self.data.size(0)))
-        return self._static_blas(Addmv, (output, 0, 1, self, vector), False)
+        return self._blas_dispatch_func(Addmv, (0, output, 1, self, vector), False)
 
     def ger(self, vector):
         output = Variable(self.data.new(self.data.size(0), vector.data.size(0)))
-        return self._static_blas(Addr, (output, 0, 1, self, vector), False)
+        return self._blas_dispatch_func(Addr, (0, output, 1, self, vector), False)
 
     def resize(self, *sizes):
         return Resize(*sizes)(self)
@@ -521,34 +506,34 @@ class Variable(_C._VariableBase):
         return Resize(*variable.size())(self)
 
     def addmm(self, *args):
-        return self._blas(Addmm, args, False)
+        return self._blas_dispatch(Addmm, args, False)
 
     def addmm_(self, *args):
-        return self._blas(Addmm, args, True)
+        return self._blas_dispatch(Addmm, args, True)
 
     def addbmm(self, *args):
-        return self._blas(Addbmm, args, False)
+        return self._blas_dispatch(Addbmm, args, False)
 
     def addbmm_(self, *args):
-        return self._blas(Addbmm, args, True)
+        return self._blas_dispatch(Addbmm, args, True)
 
     def baddbmm(self, *args):
-        return self._blas(Baddbmm, args, False)
+        return self._blas_dispatch(Baddbmm, args, False)
 
     def baddbmm_(self, *args):
-        return self._blas(Baddbmm, args, True)
+        return self._blas_dispatch(Baddbmm, args, True)
 
     def addmv(self, *args):
-        return self._blas(Addmv, args, False)
+        return self._blas_dispatch(Addmv, args, False)
 
     def addmv_(self, *args):
-        return self._blas(Addmv, args, True)
+        return self._blas_dispatch(Addmv, args, True)
 
     def addr(self, *args):
-        return self._blas(Addr, args, False)
+        return self._blas_dispatch(Addr, args, False)
 
     def addr_(self, *args):
-        return self._blas(Addr, args, True)
+        return self._blas_dispatch(Addr, args, True)
 
     def dot(self, other):
         return Dot()(self, other)
@@ -755,40 +740,24 @@ class Variable(_C._VariableBase):
                 return Normal(stddev)(means)
 
         @staticmethod
-        def _blas(cls, args, inplace):
-            num_args = len(args)
-            alpha = beta = 1
-            if num_args > 5:
-                raise RuntimeError("too many args")
-            if num_args == 5:
-                alpha, beta = args[0], args[2]
-                tensors = args[1:2] + args[3:]
-            elif num_args == 4:
-                alpha = args[0]
-                tensors = args[1:]
-            else:
-                tensors = args
-            return cls(alpha, beta, inplace)(*tensors)
+        def addmm(*args):
+            return Variable._blas_dispatch_func(Addmm, args, False)
 
-        @classmethod
-        def addmm(cls, *args):
-            return cls._blas(Addmm, args, False)
+        @staticmethod
+        def addbmm(*args):
+            return Variable._blas_dispatch_func(Addbmm, args, False)
 
-        @classmethod
-        def addbmm(cls, *args):
-            return cls._blas(Addbmm, args, False)
+        @staticmethod
+        def baddbmm(*args):
+            return Variable._blas_dispatch_func(Baddbmm, args, False)
 
-        @classmethod
-        def baddbmm(cls, *args):
-            return cls._blas(Baddbmm, args, False)
+        @staticmethod
+        def addmv(*args):
+            return Variable._blas_dispatch_func(Addmv, args, False)
 
-        @classmethod
-        def addmv(cls, *args):
-            return cls._blas(Addmv, args, False)
-
-        @classmethod
-        def addr(cls, *args):
-            return cls._blas(Addr, args, False)
+        @staticmethod
+        def addr(*args):
+            return Variable._blas_dispatch_func(Addr, args, False)
 
 
 for method in dir(Variable):
