@@ -22,7 +22,7 @@ PRECISION = 1e-4
 def iter_gradients(x):
     if isinstance(x, Variable):
         if x.requires_grad:
-            yield x.grad
+            yield x.grad.data
     else:
         for elem in x:
             for result in iter_gradients(elem):
@@ -287,7 +287,7 @@ class TestAutograd(TestCase):
         if isinstance(index, Variable):
             index = index.data
         expected_grad[index] = 0
-        self.assertEqual(x.grad, expected_grad)
+        self.assertEqual(x.grad.data, expected_grad)
 
     def _test_setitem_tensor(self, size, index):
         x = Variable(torch.ones(*size), requires_grad=True)
@@ -301,8 +301,8 @@ class TestAutograd(TestCase):
         if isinstance(index, Variable):
             index = index.data
         expected_grad_input[index] = 0
-        self.assertEqual(x.grad, expected_grad_input)
-        self.assertEqual(value.grad, torch.ones(value.size()))
+        self.assertEqual(x.grad.data, expected_grad_input)
+        self.assertEqual(value.grad.data, torch.ones(value.size()))
 
     def test_setitem(self):
         self._test_setitem((5, 5), 1)
@@ -972,9 +972,9 @@ for test in function_tests:
             # Check that gradient is the same
             for inp_i, i in zip(inplace_input, input):
                 if inp_i.grad is not None:
-                    inp_i.grad.zero_()
+                    inp_i.grad.data.zero_()
                 if i.grad is not None:
-                    i.grad.zero_()
+                    i.grad.data.zero_()
             for io, o in zip(inplace_output, output):
                 grad = torch.randn(*io.size()).double()
                 io.backward(grad)

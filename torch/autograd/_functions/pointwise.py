@@ -1,6 +1,7 @@
 from itertools import repeat
 
 from ..function import Function, InplaceFunction
+from ..variable import Variable
 
 
 class Exp(InplaceFunction):
@@ -116,8 +117,9 @@ class Clamp(Function):
 
     def backward(self, grad_output):
         i, = self.saved_tensors
-        mask = i.ge(self.min_val) * i.le(self.max_val)
-        return grad_output * mask.type_as(grad_output)
+        # FIXME: use autograd ops
+        mask = i.data.ge(self.min_val) * i.data.le(self.max_val)
+        return grad_output * Variable(mask.type_as(grad_output.data))
 
 
 class Sqrt(Function):
@@ -171,7 +173,7 @@ class Asin(Function):
 
     def backward(self, grad_output):
         i, = self.saved_tensors
-        return grad_output * (1 - i.mul(i)).sqrt_().cinv_()
+        return grad_output * (1 - i.mul(i)).sqrt().cinv()
 
 
 class Acos(Function):
@@ -181,7 +183,7 @@ class Acos(Function):
 
     def backward(self, grad_output):
         i, = self.saved_tensors
-        return grad_output.mul((1 - i.mul(i)).sqrt_().cinv_()).neg_()
+        return grad_output.mul((1 - i.mul(i)).sqrt().cinv()).neg_()
 
 
 class Atan(Function):
@@ -191,7 +193,7 @@ class Atan(Function):
 
     def backward(self, grad_output):
         i, = self.saved_tensors
-        return grad_output * i.mul(i).add_(1).cinv_()
+        return grad_output * i.mul(i).add_(1).cinv()
 
 
 class Cinv(Function):
@@ -213,9 +215,10 @@ class Cmax(Function):
         return a.cmax(b)
 
     def backward(self, grad_output):
+        # FIXME: use autograd ops for comparison
         return (
-            grad_output * self._max_buffer,
-            grad_output * self._max_buffer.eq(0).type_as(grad_output)
+            grad_output * Variable(self._max_buffer),
+            grad_output * Variable(self._max_buffer.eq(0).type_as(grad_output.data))
         )
 
 
@@ -230,7 +233,8 @@ class CmaxConstant(Function):
         return i.cmax(self.constant)
 
     def backward(self, grad_output):
-        return grad_output * self._max_buffer
+        # FIXME: use autograd ops
+        return grad_output * Variable(self._max_buffer)
 
 
 class Cmin(Function):
@@ -240,9 +244,10 @@ class Cmin(Function):
         return a.cmin(b)
 
     def backward(self, grad_output):
+        # FIXME: autograd ops
         return (
-            grad_output * self._min_buffer,
-            grad_output * self._min_buffer.eq(0).type_as(grad_output)
+            grad_output * Variable(self._min_buffer),
+            grad_output * Variable(self._min_buffer.eq(0).type_as(grad_output.data))
         )
 
 
@@ -257,7 +262,8 @@ class CminConstant(Function):
         return i.cmin(self.constant)
 
     def backward(self, grad_output):
-        return grad_output * self._min_buffer
+        # FIXME: autograd ops
+        return grad_output * Variable(self._min_buffer)
 
 
 class _ConstantGrad(Function):
@@ -271,9 +277,7 @@ class _ConstantGrad(Function):
         return getattr(i, type(self).__name__.lower())(*self.args)
 
     def backward(self, grad_output):
-        grad_input = grad_output.new(*repeat(1, grad_output.dim()))
-        grad_input = grad_input.fill_(self.grad_value).expand_as(grad_output)
-        return grad_input.mul(grad_output)
+        return grad_output.mul(self.grad_value)
 
 
 class Floor(_ConstantGrad):
@@ -391,7 +395,7 @@ class Addcdiv(InplaceFunction):
 
         if self.needs_input_grad[2]:
             div_tensor2_sq = div_tensor2.mul(div_tensor2)
-            grad_div2 = grad_output.mul(div_tensor1).div_(div_tensor2_sq)
+            grad_div2 = grad_output.mul(div_tensor1).div(div_tensor2_sq)
             grad_div2.neg_().mul_(self.scale)
 
         return grad_add, grad_div1, grad_div2

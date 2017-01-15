@@ -47,7 +47,7 @@ class Div(Function):
 
     def backward(self, grad_output):
         a, b = self.saved_tensors
-        return grad_output.div(b), grad_output.neg().mul(a).div_(b).div_(b)
+        return grad_output.div(b), grad_output.neg().mul(a).div(b).div(b)
 
 
 class Pow(Function):
@@ -145,7 +145,7 @@ class DivConstant(InplaceFunction):
     def backward(self, grad_output):
         if self.div_by_tensor:
             a = self.saved_tensors[0]
-            return grad_output.neg().mul_(self.constant).div_(a).div_(a)
+            return grad_output.neg().mul_(self.constant).div(a).div(a)
         else:
             return grad_output.div(self.constant)
 

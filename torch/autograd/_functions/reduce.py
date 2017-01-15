@@ -1,6 +1,7 @@
 from functools import reduce
 
 from ..function import Function
+from ..variable import Variable
 
 
 class _DimReduceFunction(Function):
@@ -101,7 +102,7 @@ class _SelectionFunction(Function):
             return output, indices
 
     def backward(self, grad_output, grad_indices=None):
-        grad_input = grad_output.new(*self.input_size).zero_()
+        grad_input = Variable(grad_output.data.new(*self.input_size).zero_())
         if self.dim is None and self.has_all_reduce:
             grad_input[self.indices] = grad_output[0]
         else:

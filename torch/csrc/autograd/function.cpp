@@ -363,6 +363,7 @@ PyObject *THPFunction_do_forward(THPFunction *self, PyObject *inputs)
 
     // Unpack inputs and check if they require gradients or are volatile
     THPObjectPtr unpacked_inputs = PyTuple_New(num_inputs);
+    if (!unpacked_inputs) return NULL;
     self->needs_input_grad = PyTuple_New(num_inputs);
     self->requires_grad = false;
     bool is_volatile = false;

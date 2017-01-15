@@ -3,8 +3,6 @@ import torch._C as _C
 from collections import OrderedDict
 import torch.utils.hooks as hooks
 
-from ._functions import *
-
 
 class Variable(_C._VariableBase):
     """Wraps a tensor and records the operations applied to it.
@@ -771,5 +769,6 @@ for method in dir(Variable):
     setattr(Variable._torch, method, as_static)
 
 
+from ._functions import *
 from .engine import ImperativeEngine
 Variable._execution_engine = ImperativeEngine()

@@ -145,27 +145,28 @@ PyObject* THPVariable_blasDispatchFunctional(PyObject *_unused, PyObject *args)
   PyObject *inplace = PyTuple_GET_ITEM(args, 2);
   auto num_fn_args = PyTuple_GET_SIZE(fn_args);
 
-  bool is_volatile = false;
-  THPObjectPtr unpacked_args = PyTuple_New(num_fn_args);
-  for (int i = 0; i < num_fn_args; i++) {
-    PyObject *arg = PyTuple_GET_ITEM(fn_args, i);
-    if (THPVariable_Check(arg)) {
-      THPVariable *var_arg = (THPVariable*)arg;
-      is_volatile = is_volatile || var_arg->is_volatile;
-      arg = var_arg->data;
-    }
-    Py_INCREF(arg);
-    PyTuple_SET_ITEM(unpacked_args.get(), i, arg);
-  }
-  if (is_volatile) {
-    THPObjectPtr fast = PyObject_GetAttrString(fn_cls, "fast_track");
-    if (!fast) return NULL;
-    if (fast) {
-      THPObjectPtr result = PyObject_CallObject(fast, unpacked_args);
-      if (!result) return NULL;
-      return THPVariable_NewVolatile(result);
-    }
-  }
+  // TODO: optimization
+  //bool is_volatile = false;
+  //THPObjectPtr unpacked_args = PyTuple_New(num_fn_args);
+  //for (int i = 0; i < num_fn_args; i++) {
+    //PyObject *arg = PyTuple_GET_ITEM(fn_args, i);
+    //if (THPVariable_Check(arg)) {
+      //THPVariable *var_arg = (THPVariable*)arg;
+      //is_volatile = is_volatile || var_arg->is_volatile;
+      //arg = var_arg->data;
+    //}
+    //Py_INCREF(arg);
+    //PyTuple_SET_ITEM(unpacked_args.get(), i, arg);
+  //}
+  //if (is_volatile) {
+    //THPObjectPtr fast = PyObject_GetAttrString(fn_cls, "fast_track");
+    //if (!fast) return NULL;
+    //if (fast) {
+      //THPObjectPtr result = PyObject_CallObject(fast, unpacked_args);
+      //if (!result) return NULL;
+      //return THPVariable_NewVolatile(result);
+    //}
+  //}
 
   if (num_fn_args == 5) {
     alpha = PyTuple_GET_ITEM(fn_args, 0);
@@ -207,14 +208,16 @@ PyObject* THPVariable_blasDispatch(THPVariable *self, PyObject *args)
 
   if (num_fn_args >= 5) alpha = PyTuple_GET_ITEM(fn_args, 0);
   if (num_fn_args >= 4) beta = PyTuple_GET_ITEM(fn_args, num_fn_args - 4);
-  variables = PyTuple_New(4);
+  int num_var_args = num_fn_args - std::max((int)num_fn_args - 3, 0);
+  variables = PyTuple_New(num_var_args + 1);
   if (!variables) return NULL;
   Py_INCREF(self);
   PyTuple_SET_ITEM(variables.get(), 0, (PyObject*)self);
-  for (int i = num_fn_args - 3; i < num_fn_args; i++) {
+  int var_args_offset = num_fn_args - num_var_args;
+  for (int i = var_args_offset; i < num_fn_args; i++) {
     PyObject *arg = PyTuple_GET_ITEM(fn_args, i);
     Py_INCREF(arg);
-    PyTuple_SET_ITEM(variables.get(), i - 1, arg);
+    PyTuple_SET_ITEM(variables.get(), i - var_args_offset + 1, arg);
   }
 
   THPObjectPtr fn = PyObject_CallFunctionObjArgs(fn_cls, alpha, beta, inplace, NULL);

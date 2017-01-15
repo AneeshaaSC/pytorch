@@ -3,6 +3,7 @@ import torch
 from torch._utils import _accumulate
 
 from ..function import Function, InplaceFunction
+from ..variable import Variable
 
 
 class Index(torch._C._IndexFunctionBase, Function):
@@ -282,7 +283,7 @@ class IndexSelect(Function):
 
         if self.needs_input_grad[0]:
             index, = self.saved_tensors
-            grad_tensor = grad_output.new(*self.input_size).zero_()
+            grad_tensor = Variable(grad_output.data.new(self.input_size).zero_())
             grad_tensor.index_copy_(self.dim, index, grad_output)
 
         return grad_tensor, None
@@ -431,7 +432,7 @@ class MaskedSelect(Function):
         grad_tensor = None
         if self.needs_input_grad[0]:
             # TODO: remove zero
-            grad_tensor = grad_output.new(self.input_size).zero_()
+            grad_tensor = Variable(grad_output.data.new(self.input_size).zero_())
             grad_tensor.masked_copy_(mask, grad_output)
         return grad_tensor, None
 
@@ -528,7 +529,7 @@ class Gather(Function):
 
     def backward(self, grad_output):
         index, = self.saved_tensors
-        grad_input = grad_output.new(self.input_size).zero_()
+        grad_input = Variable(grad_output.data.new(self.input_size).zero_())
         return grad_input.scatter_(self.dim, index, grad_output), None
 
 
