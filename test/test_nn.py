@@ -704,7 +704,7 @@ class TestNN(NNTestCase):
         grads = torch.arange(1, 101), torch.ones(10).div(1000)
         for norm_type in [0.5, 1.5, 2, 4, 'inf']:
             for p, g in zip(l.parameters(), grads):
-                p._grad = Variable(g.clone())
+                p._grad = Variable(g.clone().view_as(p.data))
             norm_before = compute_norm(norm_type)
             norm = clip_grad_norm(l.parameters(), max_norm, norm_type=norm_type)
             norm_after = compute_norm(norm_type)

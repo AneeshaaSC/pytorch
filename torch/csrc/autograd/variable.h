@@ -19,9 +19,8 @@ struct Variable : std::enable_shared_from_this<Variable> {
       , version()
       , expected_version(-1) {}
 
-    SavedVariable(const Variable& variable, Function* saved_for)
+    SavedVariable(Variable& variable, Function* saved_for)
       : data(variable.data->clone_shallow())
-      , grad_accumulator(variable.grad_accumulator)
       , version(std::move(variable.version_counter->new_saved_ref()))
       , requires_grad(variable.requires_grad)
       , is_volatile(false)
@@ -30,6 +29,11 @@ struct Variable : std::enable_shared_from_this<Variable> {
           weak_grad_fn = variable.grad_fn;
         } else {
           grad_fn = variable.grad_fn;
+        }
+
+        {
+          std::lock_guard<std::mutex> lock(variable.grad_accumulator_lock);
+          grad_accumulator = variable.grad_accumulator;
         }
       }
 

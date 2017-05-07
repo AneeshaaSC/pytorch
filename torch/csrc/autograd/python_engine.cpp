@@ -135,6 +135,8 @@ PyObject *THPEngine_run_backward(THPEngine *self, PyObject *args, PyObject *kwar
     THPUtils_assert(THPVariable_Check(_variable), "element %d of variables "
         "tuple is not a Variable", i);
     auto& variable = ((THPVariable*)_variable)->cdata;
+    THPUtils_assert(!variable->is_volatile,
+        "element %d of variables tuple is volatile", i);
     auto grad_fn = variable->grad_fn ? variable->grad_fn : variable->get_grad_accumulator();
     int output_nr = variable->grad_fn ? variable->output_nr : 0;
     roots[i] = std::make_pair<>(std::move(grad_fn), output_nr);
@@ -166,7 +168,7 @@ PyObject *THPEngine_run_backward(THPEngine *self, PyObject *args, PyObject *kwar
       int output_nr = input_var->cdata->output_nr;
       bool is_leaf = !grad_fn;
       if (is_leaf) {
-          grad_fn = input_var->cdata->grad_accumulator.lock();
+          grad_fn = input_var->cdata->get_grad_accumulator();
       }
       THPUtils_assert(grad_fn, "One of the differentiated Variables appears to not have "
           "been used in the graph");
