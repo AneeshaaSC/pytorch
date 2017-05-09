@@ -1095,15 +1095,17 @@ TH_API void THNN_(Threshold_updateOutput)(
                   THCTensor *output,
                   accreal threshold,
                   accreal val,
+                  THCudaByteTensor *mask,  // [OPTIONAL]
                   bool inplace);
 
 TH_API void THNN_(Threshold_updateGradInput)(
                   THCState *state,
-                  THCTensor *input,
+                  THCTensor *input,        // [OPTIONAL]
                   THCTensor *gradOutput,
                   THCTensor *gradInput,
                   accreal threshold,
                   accreal val,
+                  THCudaByteTensor *mask,  // [OPTIONAL]
                   bool inplace);
 
 TH_API void THNN_(VolumetricAveragePooling_updateOutput)(

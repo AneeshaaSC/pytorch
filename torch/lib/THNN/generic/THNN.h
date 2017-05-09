@@ -604,14 +604,16 @@ TH_API void THNN_(Threshold_updateOutput)(
           THTensor *output,
           accreal threshold,
           accreal val,
+          THByteTensor *mask,          // [OPTIONAL]
           bool inplace);
 TH_API void THNN_(Threshold_updateGradInput)(
           THNNState *state,
-          THTensor *input,
+          THTensor *input,             // [OPTIONAL]
           THTensor *gradOutput,
           THTensor *gradInput,
           accreal threshold,
           accreal val,
+          THByteTensor *mask,          // [OPTIONAL]
           bool inplace);
 
 TH_API void THNN_(TemporalConvolution_updateOutput)(

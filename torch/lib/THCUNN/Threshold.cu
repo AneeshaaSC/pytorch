@@ -39,6 +39,26 @@ struct ThresholdUpdateOutputIP
   }
 };
 
+// in-place variant with a mask
+template <typename T>
+struct ThresholdUpdateOutputMaskIP
+{
+  const T threshold_;
+  const T val_;
+
+  ThresholdUpdateOutputMaskIP(T threshold, T val)
+    : threshold_(threshold)
+    , val_(val)
+  {}
+
+  __device__ __forceinline__ void operator()(T *x, unsigned char *mask)
+  {
+    T xVal = *x;
+    unsigned char cmp = *mask = (xVal > threshold_);
+    *x = cmp ? xVal : val_;
+  }
+};
+
 template <typename T>
 struct ThresholdUpdateGradInput
 {
@@ -68,6 +88,16 @@ struct ThresholdUpdateGradInputIP
     T *gradOutput, T *input) const
   {
     *gradOutput = (*input > threshold_) ? *gradOutput : ScalarConvert<int, T>::to(0);
+  }
+};
+
+template <typename T>
+struct ThresholdUpdateGradInputMask
+{
+  __device__ __forceinline__ void operator()(
+    T *gradInput, unsigned char *mask, T *gradOutput) const
+  {
+    *gradInput = *mask ? *gradOutput : ScalarConvert<int, T>::to(0);
   }
 };
 
