@@ -54,7 +54,7 @@ void $name($args)
 #endif
 """)
 
-    INDEX_TENSOR_TYPES = {'THIndexTensor*', 'THCIndexTensor*'}
+    INDEX_TENSOR_TYPES = {'THIndexTensor*', 'THCIndexTensor*', 'THByteTensor*', 'THCudaByteTensor*'}
 
     REAL_TENSOR_TYPES = {'THTensor*', 'THCTensor*'}
 
@@ -65,6 +65,8 @@ void $name($args)
         'THCTensor*': 'thpp::Tensor*',
         'THIndexTensor*': 'thpp::Tensor*',
         'THCIndexTensor*': 'thpp::Tensor*',
+        'THByteTensor*': 'thpp::Tensor*',
+        'THCudaByteTensor*': 'thpp::Tensor*',
         'THIndex_t': 'long',
         'accreal': 'double',
     }
